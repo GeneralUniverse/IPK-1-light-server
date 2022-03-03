@@ -16,6 +16,14 @@ int main (int argc, char** argv){
         printf("Input a correct number of a port.\n");
         return 0;
     }
+    //zkouska funkci
+    printf("Name of the hostname: %s\n",readHostname());
+    free(readHostname());
+    printf("CPU - %s\n",readCpuName());
+    free(readCpuName());
+    // printf("CPU usage: %d",GetCPULoad());
+    printf("%f %%\n",GetCPULoad());
+
 
     int port = atoi(argv[1]);
 
@@ -23,32 +31,54 @@ int main (int argc, char** argv){
     servad.sin_addr.s_addr = htonl(INADDR_ANY);
     servad.sin_port = htons(port);
 
-    int listen = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); 
-    bind(listen, servad , sizeof(servad));
+    int listenSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); 
+    bind(listenSock, (struct sockaddr*) &servad , sizeof(servad));
+    listen(listenSock,10);
 
-    printf("Name of the hostname: %s\n",readHostname());
-    free(readHostname());
-    printf("CPU - %s\n",readCpuName());
-    free(readCpuName());
-   // printf("CPU usage: %d",GetCPULoad());
-     printf("\n\n%f %%\n",GetCPULoad());
-    //while(1){
+    char* httpHeader = "HTTP/1.1 200 OK\r\nContent-Type: text/plain;\r\n\r\n";
 
-   // }
+    //hlavni prijmaci smycka
+    while(1){
+        char* buffer=malloc(sizeof(char)*128);
+        strcat(buffer,httpHeader);
+        int connSock = accept(listenSock,(struct sockaddr*) NULL, NULL);
+
+       char clientMessage[13];
+       read(connSock,clientMessage,13);
+        
+       if(strncmp("GET /hostname",clientMessage,13)==0){
+           strcat(buffer,readHostname());
+           write(connSock,buffer,strlen(buffer));
+           //printf("%s\n",clientMessage);
+           printf("%s",buffer);    
+       }
+       else if(strncmp("GET /cpu-name",clientMessage,13)==0){
+           strcat(buffer,readCpuName());
+           write(connSock,buffer,strlen(buffer));
+           //printf("%s",clientMessage);
+           printf("%s",buffer);
+       }
+       else if(strncmp("GET /load",clientMessage,9)==0){
+          
+       }
+       close(connSock);
+       free(buffer);
+    }
+    close(listenSock);
     return 0;
 }
 char* readHostname(){
-    char* hostname = malloc(1024*sizeof(char));
+    char* hostname = malloc(128*sizeof(char));
     FILE* f = fopen("/proc/sys/kernel/hostname", "r");
-    fscanf(f,"%s",hostname);
+    fgets(hostname,128,f);
     return hostname;
 }
 char* readCpuName(){
-    char* cpuName = malloc(1024*sizeof(char));
+    char* cpuName = malloc(128*sizeof(char));
     FILE* f;
     f = popen("cat /proc/cpuinfo | grep \"model name\"", "r");
     // fscanf(f,"%s",cpuName);
-    fgets(cpuName,1024,f);
+    fgets(cpuName,128,f);
     return cpuName;
 }
 float GetCPULoad() {
