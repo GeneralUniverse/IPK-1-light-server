@@ -16,14 +16,6 @@ int main (int argc, char** argv){
         printf("Input a correct number of a port.\n");
         return 0;
     }
-    //zkouska funkci
-    printf("Name of the hostname: %s\n",readHostname());
-    free(readHostname());
-    printf("CPU - %s\n",readCpuName());
-    free(readCpuName());
-    // printf("CPU usage: %d",GetCPULoad());
-    printf("%f %%\n",GetCPULoad());
-
 
     int port = atoi(argv[1]);
 
@@ -36,9 +28,10 @@ int main (int argc, char** argv){
     listen(listenSock,10);
 
     char* httpHeader = "HTTP/1.1 200 OK\r\nContent-Type: text/plain;\r\n\r\n";
-
+    GetCPULoad();
     //hlavni prijmaci smycka
     while(1){
+        
         char* buffer=malloc(sizeof(char)*128);
         strcat(buffer,httpHeader);
         int connSock = accept(listenSock,(struct sockaddr*) NULL, NULL);
@@ -48,19 +41,23 @@ int main (int argc, char** argv){
         
        if(strncmp("GET /hostname",clientMessage,13)==0){
            strcat(buffer,readHostname());
-           write(connSock,buffer,strlen(buffer));
-           //printf("%s\n",clientMessage);
-           printf("%s",buffer);    
+           write(connSock,buffer,strlen(buffer));  
+           free(readHostname());
        }
        else if(strncmp("GET /cpu-name",clientMessage,13)==0){
            strcat(buffer,readCpuName());
            write(connSock,buffer,strlen(buffer));
-           //printf("%s",clientMessage);
-           printf("%s",buffer);
+           free(readCpuName());
        }
        else if(strncmp("GET /load",clientMessage,9)==0){
-          
+           char* buf = malloc(sizeof(char)*10);
+          gcvt (GetCPULoad(), 10, buf);
+          strcat(buffer,buf);
+          write(connSock,buffer,strlen(buffer));
+          printf("%g %% ",GetCPULoad());
+          free(buf);
        }
+
        close(connSock);
        free(buffer);
     }
@@ -98,7 +95,6 @@ float GetCPULoad() {
     }
 
     sleep(1);
-    printf("\n");
 
     info = popen("cat /proc/stat","r");
     fgets(currInfo,1024,info);
@@ -122,7 +118,7 @@ float GetCPULoad() {
     float idled = idle - prevIdle;
 
     float CPU_Percentage = (totaf - idled)/totaf;
-
+    printf("%g %%",CPU_Percentage);
     return CPU_Percentage*100;
 }
 // int getCpuUsage(){
