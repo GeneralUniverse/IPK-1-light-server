@@ -10,25 +10,22 @@ char* readCpuName();
 double GetCPULoad();
 
 int main (int argc, char** argv){
-    int listenSock, connSock; long valread;
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
-
-// set up the port
-    if(argc != 2){
+     if(argc != 2){
         printf("Input a correct number of a port.\n");
         return 0;
     }
-
+    int listenSock, connSock;
+    struct sockaddr_in address;
+    int addrlen = sizeof(address);
     int port = atoi(argv[1]);
 
-        address.sin_family = AF_INET;
+    address.sin_family = AF_INET;
     address.sin_port = htons(port);
     address.sin_addr.s_addr = INADDR_ANY;
 
-     memset(address.sin_zero, '\0', sizeof address.sin_zero);
+    memset(address.sin_zero, '\0', sizeof(address.sin_zero));
 
-    if ((listenSock = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    if ((listenSock = socket(AF_INET, SOCK_STREAM,  IPPROTO_TCP)) == 0)
     {
         perror("In socket");
         exit(EXIT_FAILURE);
@@ -44,7 +41,7 @@ int main (int argc, char** argv){
         exit(EXIT_FAILURE);
     }
 
-    // char* httpHeader = "HTTP/1.1 200 OK\r\nContent-Type: text/plain;\r\n\r\n";
+    char* httpHeader = "HTTP/1.1 200 OK\r\nContent-Type: text/plain;\r\n\r\n";
     
     //hlavni prijmaci smycka
     while(1){
@@ -55,23 +52,19 @@ int main (int argc, char** argv){
             exit(EXIT_FAILURE);
         }
         char buffer[256] = "HTTP/1.1 200 OK\r\nContent-Type: text/plain;\r\n\r\n";
-       // char* buffer=malloc(sizeof(char)*128);
-       // strcat(buffer,httpHeader);
-    //printf("%s\n",buffer);
-       char clientMessage[13];
-       read(connSock,clientMessage,13);
+        char clientMessage[512];
+        strcat(buffer,httpHeader);
+        read(connSock,clientMessage,512);
         
        if(strncmp("GET /hostname",clientMessage,13)==0){
            strcat(buffer,readHostname());
            send(connSock,buffer,strlen(buffer),0);  
            free(readHostname());
-
        }
        else if(strncmp("GET /cpu-name",clientMessage,13)==0){
            strcat(buffer,readCpuName());
            write(connSock,buffer,strlen(buffer));
            free(readCpuName());
-
        }
        else if(strncmp("GET /load",clientMessage,9)==0){ 
           char* buf = malloc(sizeof(char)*10);
@@ -80,13 +73,10 @@ int main (int argc, char** argv){
           write(connSock,buffer,strlen(buffer));
           free(buf);
        }
-
-        memset(buffer,0,strlen(buffer));
-       
-      // free(buffer);
-      close(connSock);
+       memset(buffer,0,strlen(buffer));
+       close(connSock);
     }
-   // close(listenSock);
+    close(listenSock);
     return 0;
 }
 char* readHostname(){
@@ -110,12 +100,11 @@ double GetCPULoad() {
 
     FILE* info = popen("cat /proc/stat","r");
 	fgets(prevInfo,1024,info);
-    // printf("%s\n",prevInfo);
 
     char* token = strtok(prevInfo, " ");
     for(int i=0; token != NULL; i++ ) {
         prevValues[i] = atof(token);  
-       // printf( "%f \n ", prevValues[i] );
+
         token = strtok(NULL, " ");
     }
     
@@ -128,7 +117,6 @@ double GetCPULoad() {
     char* token2 = strtok(currInfo, " ");
     for(int i=0; token2 != NULL; i++ ) {
         currValues[i] = atof(token2);  
-       // printf( "%f \n ", currValues[i] );
         token2 = strtok(NULL, " ");
     }
 
@@ -144,8 +132,8 @@ double GetCPULoad() {
     double totaf = total - prevTotal;
     double idled = idle - prevIdle;
 
-    double CPU_Percentage = (totaf - idled)/totaf;
-    return CPU_Percentage*100;
+     double CPU_Percentage = (totaf - idled)/totaf;
+     return CPU_Percentage*100;
 }
 // int getCpuUsage(){
 // 	clock();
